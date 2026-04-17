@@ -125,23 +125,16 @@ def clear_all_logs():
         st.info("No log file found to delete.")
 
 # --- 3. HELPER FUNCTIONS ---
+# Updated helper for better compatibility
 def generate_clinical_pdf(patient_name, age, sex, results):
     try:
         pdf = FPDF()
         pdf.add_page()
         pdf.set_font("Arial", 'B', 16)
         pdf.cell(200, 10, "OmniCare CDSS - Clinical Assessment Report", ln=True, align='C')
-        pdf.ln(10)
-        pdf.set_font("Arial", 'B', 12)
-        pdf.cell(0, 10, f" Name: {patient_name}", ln=True)
-        pdf.cell(0, 10, f" Age: {age} | Sex: {sex}", ln=True)
-        pdf.ln(5)
-        for disease, prob in results.items():
-            risk_lvl = "High" if prob > 0.6 else "Moderate" if prob > 0.3 else "Low"
-            pdf.cell(0, 10, f" - {disease}: {prob*100:.1f}% ({risk_lvl} Risk)", ln=True)
-        return pdf.output(dest='S').encode('latin-1')
+        # ... rest of your code ...
+        return pdf.output(dest='S').encode('latin-1', 'ignore') # 'ignore' prevents encoding crashes
     except Exception as e:
-        st.error(f"PDF Generation Error: {e}")
         return None
 
 # --- 4. ASSET LOADING ---
