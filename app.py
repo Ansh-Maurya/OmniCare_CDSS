@@ -8,7 +8,7 @@ import qrcode
 import base64
 from io import BytesIO
 from datetime import datetime
-from fpdf import FPDF # New requirement
+from fpdf import FPDF 
 
 # --- 1. PAGE SETUP ---
 st.set_page_config(
@@ -86,7 +86,7 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# --- 2.5 LOCAL IMAGE ENCODING (NEW ADDITION) ---
+# --- 2.5 LOCAL IMAGE ENCODING ---
 def get_base64_img(file_name):
     try:
         path = os.path.join("image", file_name)
@@ -104,12 +104,11 @@ img_det = get_base64_img("details.png")
 img_pat = get_base64_img("patient.png")
 img_find = get_base64_img("assessment.png")
 
-# --- 2.8 PATIENT LOGGING SYSTEM (NEW ADDITION) ---
+# --- 2.8 PATIENT LOGGING SYSTEM ---
 LOG_FILE = "patient_records.csv"
 
 def log_patient_data(name, age, sex, results):
     timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    # Flatten results for CSV
     res_str = " | ".join([f"{k}: {v*100:.1f}%" for k, v in results.items()])
     new_data = pd.DataFrame([[timestamp, name, age, sex, res_str]], 
                             columns=['Timestamp', 'Name', 'Age', 'Sex', 'Diagnostic Results'])
@@ -124,29 +123,20 @@ def generate_clinical_pdf(patient_name, age, sex, results):
     try:
         pdf = FPDF()
         pdf.add_page()
-        
-        # Header
         pdf.set_font("Arial", 'B', 16)
         pdf.cell(200, 10, "OmniCare CDSS - Clinical Assessment Report", ln=True, align='C')
         pdf.ln(10)
-        
-        # Patient Data
         pdf.set_font("Arial", 'B', 12)
         pdf.cell(0, 10, f" Name: {patient_name}", ln=True)
         pdf.cell(0, 10, f" Age: {age} | Sex: {sex}", ln=True)
         pdf.ln(5)
-        
-        # Results
         for disease, prob in results.items():
             risk_lvl = "High" if prob > 0.6 else "Moderate" if prob > 0.3 else "Low"
             pdf.cell(0, 10, f" - {disease}: {prob*100:.1f}% ({risk_lvl} Risk)", ln=True)
-        
-        # Output as bytes
         return pdf.output(dest='S').encode('latin-1')
     except Exception as e:
         st.error(f"PDF Generation Error: {e}")
         return None
-    return pdf.output(dest='S').encode('latin-1')
 
 def generate_qr_code(data):
     qr = qrcode.QRCode(version=1, box_size=10, border=4)
@@ -197,7 +187,6 @@ with st.sidebar:
 st.markdown("<h2 style='margin-bottom:0;'>Clinical Decision Support Dashboard</h2>", unsafe_allow_html=True)
 st.markdown("<p style='color:#64748b; margin-bottom:2rem;'>Multivariate risk assessment for metabolic and renal dysfunction.</p>", unsafe_allow_html=True)
 
-# UPDATED: Added "Patient History Log" tab
 tab1, tab2, tab3 = st.tabs(["Patient Intake", "Evidence Analysis", "Patient History Log"])
 
 with tab1:
@@ -207,7 +196,6 @@ with tab1:
         p_name = st.text_input("Full Patient Name", placeholder="Enter name for reporting...")
         
         st.markdown(f'<div class="section-header"><img src="data:image/png;base64,{img_det}" width="32"/> Demographics & Physicals</div>', unsafe_allow_html=True)
-        
         col1, col2, col3 = st.columns(3)
         with col1:
             age = st.number_input("Patient Age", 1, 120, 30)
@@ -250,7 +238,6 @@ with tab1:
                 u_prot = st.select_slider("Proteinuria Level", options=[0, 1, 2, 3, 4, 5])
                 fast_bs = st.number_input("Fasting Glucose", 50, 400, 100)
 
-        st.write("")
         submit = st.form_submit_button("PROCESS DIAGNOSTICS")
     st.markdown('</div>', unsafe_allow_html=True)
 
@@ -266,7 +253,6 @@ with tab1:
             st.session_state['age'] = age
             st.session_state['sex'] = sex
             
-            # Prediction Logic
             base_features = [int(high_bp), int(high_chol), 1, bmi, int(smoker), int(stroke), 0, int(phys_act), 1, 1, int(hvy_alc), int(healthcare), 0, gen_hlth, ment_days, phys_days, int(diff_walk), sex_num, age_mapped, 5, 6]
             base_arr = np.array(base_features).reshape(1, -1)
             
@@ -275,12 +261,10 @@ with tab1:
                 prob = d_model.predict_proba(d_scale.transform(base_arr))[0][1]
                 st.session_state['d_res'] = prob
                 report_results["Diabetes"] = prob
-            
             if "Heart Disease" in target_diseases and h_model:
                 prob = h_model.predict_proba(h_scale.transform(base_arr))[0][1]
                 st.session_state['h_res'] = prob
                 report_results["Heart Disease"] = prob
-
             if "CKD" in target_diseases and k_model:
                 ckd_features = [age, bmi, int(smoker), int(hvy_alc), int(phys_act), 3, 3, 0, int(high_bp), 0, 0, 120, 80, fast_bs, hbA1c, s_creat, bun, gfr, u_prot, 1, 85]
                 ckd_arr = np.array(ckd_features).reshape(1, -1)
@@ -290,7 +274,10 @@ with tab1:
 
             st.session_state['report_results'] = report_results
             
-            # NEW: Log the data to CSV
+            # Integrated Fix: Storing PDF bytes in session state
+            pdf_bytes = generate_clinical_pdf(p_name, age, sex, report_results)
+            st.session_state['pdf_report_bytes'] = pdf_bytes
+            
             log_patient_data(p_name, age, sex, report_results)
 
     if st.session_state.get('scan_run'):
@@ -299,26 +286,18 @@ with tab1:
         
         with c1:
             st.markdown('<div class="clinical-card">', unsafe_allow_html=True)
-    
-            # Generate the data
-        pdf_data = generate_clinical_pdf(
-            st.session_state['patient_name'], 
-            st.session_state['age'], 
-            st.session_state['sex'], 
-            st.session_state['report_results']
-        )
-    
-        if pdf_data:
+            report_data = st.session_state.get('pdf_report_bytes')
+            if report_data:
                 st.download_button(
-                label="DOWNLOAD CLINICAL REPORT (PDF)",
-                data=pdf_data,
-                file_name=f"OmniCare_Report_{st.session_state['patient_name']}.pdf",
-                mime="application/pdf"
-            )
-        else:
+                    label="DOWNLOAD CLINICAL REPORT (PDF)",
+                    data=report_data,
+                    file_name=f"OmniCare_Report_{st.session_state['patient_name']}.pdf",
+                    mime="application/pdf",
+                    key="download_pdf_btn"
+                )
+            else:
                 st.warning("Could not generate PDF. Please check patient name for special characters.")
-    
-        st.markdown('</div>', unsafe_allow_html=True)
+            st.markdown('</div>', unsafe_allow_html=True)
             
         with c2:
             st.markdown('<div class="clinical-card" style="text-align:center;">', unsafe_allow_html=True)
@@ -351,7 +330,6 @@ with tab2:
     if st.session_state.get('scan_run'):
         st.markdown('<div class="clinical-card">', unsafe_allow_html=True) 
         choice = st.selectbox("Select Diagnosis to Audit Feature Weights", st.session_state['selected_targets'])
-        
         if choice == "CKD":
             active_model, feat_names = k_model, ['Age', 'BMI', 'Smoking', 'Alcohol', 'Activity', 'Diet', 'Sleep', 'FamilyHist', 'HTN', 'Diabetes', 'UTI', 'SysBP', 'DiaBP', 'FastingBS', 'HbA1c', 'Creatinine', 'BUN', 'GFR', 'ProteinUrine', 'Fatigue', 'LifeQuality']
         else:
@@ -367,18 +345,15 @@ with tab2:
     else:
         st.info("Run an assessment to view clinical evidence analysis.")
 
-# --- 8. PATIENT HISTORY LOG TAB (NEW ADDITION) ---
+# --- 8. PATIENT HISTORY LOG TAB ---
 with tab3:
     st.markdown('<div class="clinical-card">', unsafe_allow_html=True)
     st.markdown('<div class="section-header">📋 Historical Patient Diagnostics Log</div>', unsafe_allow_html=True)
     if os.path.exists(LOG_FILE):
         history_df = pd.read_csv(LOG_FILE)
         st.dataframe(history_df.sort_values(by='Timestamp', ascending=False), use_container_width=True)
-        
-        col_down1, col_down2 = st.columns([1, 4])
-        with col_down1:
-            csv_data = history_df.to_csv(index=False).encode('utf-8')
-            st.download_button("Export Log (CSV)", data=csv_data, file_name="clinical_history.csv", mime="text/csv")
+        csv_data = history_df.to_csv(index=False).encode('utf-8')
+        st.download_button("Export Log (CSV)", data=csv_data, file_name="clinical_history.csv", mime="text/csv")
     else:
         st.info("No patient records found. Complete a diagnosis to start the log.")
     st.markdown('</div>', unsafe_allow_html=True)
