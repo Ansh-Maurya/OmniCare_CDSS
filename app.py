@@ -157,7 +157,7 @@ d_model, h_model, k_model, d_scale, h_scale, k_scale = load_ml_assets()
 # --- 5. SIDEBAR ---
 with st.sidebar:
     st.markdown('<div class="brand-text">OmniCare <span style="color:#10b981;">CDSS</span></div>', unsafe_allow_html=True)
-    st.markdown('<span class="version-badge">v4.5.2 PROD</span>', unsafe_allow_html=True)
+    st.markdown('<span class="version-badge">v1.2.0 PROD</span>', unsafe_allow_html=True)
     st.write("")
     st.image("https://img.icons8.com/fluency/96/hospital.png", width=60)
     st.markdown("---")
