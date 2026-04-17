@@ -302,22 +302,40 @@ with tab1:
         with c2:
             st.markdown('<div class="clinical-card" style="text-align:center;">', unsafe_allow_html=True)
             
-            # 1. Get the PDF bytes from session state
-            pdf_data = st.session_state.get('pdf_report_bytes')
+            # 1. Create a lightweight summary for the QR (NO heavy PDF data)
+            results = st.session_state.get('report_results', {})
+            res_summary = ", ".join([f"{k}: {v*100:.0f}%" for k, v in results.items()])
             
-            if pdf_data:
-                # 2. Encode PDF to Base64 to create a Data URI
-                b64_pdf = base64.b64encode(pdf_data).decode('utf-8')
-                # This URI tells the phone "I am a PDF, download/open me"
-                download_url = f"data:application/pdf;base64,{b64_pdf}"
-                
-                # 3. Generate QR code with the Data URI
-                qr_b64 = generate_qr_code(download_url)
-                st.markdown(f'<img src="data:image/png;base64,{qr_b64}" width="150">', unsafe_allow_html=True)
-                st.info("Scan to download PDF directly to mobile")
+            qr_text = (
+                f"PATIENT: {st.session_state.get('patient_name')}\n"
+                f"AGE/SEX: {st.session_state.get('age')}/{st.session_state.get('sex')}\n"
+                f"DIAGNOSIS: {res_summary}\n"
+                f"DATE: {datetime.now().strftime('%Y-%m-%d')}"
+            )
+
+            # 2. Generate a clean, low-density QR code
+            qr_b64 = generate_qr_code(qr_text)
+            st.markdown(f'<img src="data:image/png;base64,{qr_b64}" width="180">', unsafe_allow_html=True)
+            st.caption("Scan for Patient Summary")
+            st.markdown('</div>', unsafe_allow_html=True)
+
+        # 3. Dedicated Download Section in C1
+        with c1:
+            st.markdown('<div class="clinical-card">', unsafe_allow_html=True)
+            st.subheader("Final Report")
+            pdf_bytes = st.session_state.get('pdf_report_bytes')
+            
+            if pdf_bytes:
+                st.download_button(
+                    label="💾 DOWNLOAD OFFICIAL PDF REPORT",
+                    data=pdf_bytes,
+                    file_name=f"Report_{st.session_state.get('patient_name')}.pdf",
+                    mime="application/pdf",
+                    use_container_width=True
+                )
+                st.success("Report generated successfully. Click above to save.")
             else:
-                st.caption("Complete diagnosis to generate QR link")
-                
+                st.error("Error: PDF bytes missing. Please re-run assessment.")
             st.markdown('</div>', unsafe_allow_html=True)
         
         st.markdown(f'<div class="section-header"><img src="data:image/png;base64,{img_find}" width="32"/> Assessment Findings</div>', unsafe_allow_html=True)
