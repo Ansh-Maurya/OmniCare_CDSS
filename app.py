@@ -344,14 +344,24 @@ with tab2:
 # --- 8. PATIENT HISTORY LOG TAB ---
 with tab3:
     st.markdown('<div class="clinical-card">', unsafe_allow_html=True)
-    st.markdown('<div class="section-header">📋 Historical Patient Diagnostics Log</div>', unsafe_allow_html=True)
     if os.path.exists(LOG_FILE):
         history_df = pd.read_csv(LOG_FILE)
-        st.dataframe(history_df.sort_values(by='Timestamp', ascending=False), use_container_width=True)
-        csv_data = history_df.to_csv(index=False).encode('utf-8')
-        st.download_button("Export Log (CSV)", data=csv_data, file_name="clinical_history.csv", mime="text/csv")
+        
+        # Use data_editor to allow row deletion
+        edited_df = st.data_editor(
+            history_df, 
+            num_rows="dynamic", 
+            use_container_width=True,
+            key="log_editor"
+        )
+        
+        # Button to save changes after deleting rows
+        if st.button("Save Changes to Log"):
+            edited_df.to_csv(LOG_FILE, index=False)
+            st.success("Log updated!")
+            st.rerun()
     else:
-        st.info("No patient records found. Complete a diagnosis to start the log.")
+        st.info("No records to display.")
     st.markdown('</div>', unsafe_allow_html=True)
 
 # FINAL FOOTER
