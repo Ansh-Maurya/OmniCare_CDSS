@@ -117,6 +117,13 @@ def log_patient_data(name, age, sex, results):
     else:
         new_data.to_csv(LOG_FILE, mode='a', header=False, index=False)
 
+def clear_all_logs():
+    if os.path.exists("patient_records.csv"):
+        os.remove("patient_records.csv")
+        st.success("Log file deleted successfully!")
+    else:
+        st.info("No log file found to delete.")
+
 # --- 3. HELPER FUNCTIONS ---
 def generate_clinical_pdf(patient_name, age, sex, results):
     try:
@@ -172,7 +179,10 @@ with st.sidebar:
     if st.button("Reset Diagnostics"):
         st.session_state.clear()
         st.rerun()
-
+        
+    if st.sidebar.button("🗑️ Wipe All Records"):
+    clear_all_logs()
+    st.rerun()
 # --- 6. MAIN UI ---
 st.markdown("<h2 style='margin-bottom:0;'>Clinical Decision Support Dashboard</h2>", unsafe_allow_html=True)
 st.markdown("<p style='color:#64748b; margin-bottom:2rem;'>Multivariate risk assessment for metabolic and renal dysfunction.</p>", unsafe_allow_html=True)
