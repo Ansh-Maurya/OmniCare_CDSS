@@ -124,6 +124,15 @@ def generate_clinical_pdf(patient_name, age, sex, results):
     pdf = FPDF()
     pdf.add_page()
     
+    # ... [Keep your existing PDF styling/content code here] ...
+
+    # REPLACE your return line with this:
+    # 'dest=S' returns the PDF as a string, which we then convert to bytes
+    pdf_output = pdf.output(dest='S')
+    
+    # Use 'latin-1' but wrap it in a way that is safe for the browser
+    return BytesIO(pdf_output.encode('latin-1'))
+    
     # Header
     pdf.set_font("Arial", 'B', 16)
     pdf.set_text_color(15, 23, 42)
@@ -315,9 +324,12 @@ with tab1:
                 st.session_state['report_results']
             )
             st.markdown(f'<img src="data:image/png;base64,{img_pdf}" width="24" style="margin-bottom:-5px;"/> **Report Ready**', unsafe_allow_html=True)
+            # Inside your 'if submit' or 'if scan_run' block:
+            pdf_buffer = generate_clinical_pdf(...)
+
             st.download_button(
                 label="DOWNLOAD CLINICAL REPORT (PDF)",
-                data=pdf_data,
+                data=pdf_buffer.getvalue(), # Get the actual bytes from the buffer
                 file_name=f"OmniCare_Report_{st.session_state['patient_name']}.pdf",
                 mime="application/pdf"
             )
