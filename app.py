@@ -436,4 +436,4 @@ with tab3:
     st.markdown('</div>', unsafe_allow_html=True)
 
 # FINAL FOOTER
-st.markdown('<div class="disclaimer-footer">🛡️ <strong>OmniCare CDSS</strong> | Clinical Intelligence Platform v4.5.2<br>Educational Purpose Only © 2026</div>', unsafe_allow_html=True)
+st.markdown('<div class="disclaimer-footer">🛡️ <strong>OmniCare CDSS</strong> | Clinical Intelligence Platform v1.2.0<br>Educational Purpose Only</div>', unsafe_allow_html=True)
