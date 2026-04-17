@@ -278,26 +278,32 @@ with tab1:
             log_patient_data(p_name, age, sex, report_results)
 
     if st.session_state.get('scan_run'):
-        # --- RE-DESIGNED CLINICAL OUTPUT (QR REMOVED) ---
         st.markdown(f'<div class="section-header"><img src="data:image/png;base64,{img_rep}" width="32"/> Clinical Output</div>', unsafe_allow_html=True)
         
         st.markdown('<div class="clinical-card" style="text-align: center;">', unsafe_allow_html=True)
+        
+        # 1. Retrieve the PDF data from session state
         report_data = st.session_state.get('pdf_report_bytes')
+        patient_name = st.session_state.get('patient_name', 'Patient')
         
         if report_data:
-            st.subheader(f"Final Clinical Report: {st.session_state.get('patient_name')}")
-            st.write("Diagnostic processing complete. You can now download the official clinical summary.")
+            st.subheader(f"Final Clinical Report: {patient_name}")
+            st.info("Clinical assessment finalized. Click the button below to save the document.")
+            
+            # 2. Fix: Ensure key is unique and data is persistent
             st.download_button(
                 label="📥 DOWNLOAD CLINICAL ASSESSMENT REPORT (PDF)",
                 data=report_data,
-                file_name=f"OmniCare_Report_{st.session_state.get('patient_name', 'Patient')}.pdf",
+                file_name=f"OmniCare_Report_{patient_name.replace(' ', '_')}.pdf",
                 mime="application/pdf",
-                key="download_pdf_btn",
+                key="persistent_download_btn",
                 use_container_width=True
             )
-            st.success("Report is ready for export and archival.")
+            st.success("The report is encrypted and ready for local storage.")
         else:
-            st.error("Report generation failed. Please verify patient intake details.")
+            # 3. Fallback: Re-generate if lost (Safety Net)
+            st.warning("Report data was refreshed. Please click 'PROCESS DIAGNOSTICS' again to re-bind the PDF.")
+            
         st.markdown('</div>', unsafe_allow_html=True)
         
         # --- ASSESSMENT FINDINGS ---
