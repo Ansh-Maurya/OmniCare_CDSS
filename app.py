@@ -181,8 +181,8 @@ with st.sidebar:
         st.rerun()
         
     if st.sidebar.button("🗑️ Wipe All Records"):
-    clear_all_logs()
-    st.rerun()
+        clear_all_logs()
+        st.rerun()
 # --- 6. MAIN UI ---
 st.markdown("<h2 style='margin-bottom:0;'>Clinical Decision Support Dashboard</h2>", unsafe_allow_html=True)
 st.markdown("<p style='color:#64748b; margin-bottom:2rem;'>Multivariate risk assessment for metabolic and renal dysfunction.</p>", unsafe_allow_html=True)
