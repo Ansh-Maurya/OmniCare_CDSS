@@ -4,11 +4,10 @@ import joblib
 import numpy as np
 import plotly.graph_objects as go
 import os
-import qrcode
 import base64
 from io import BytesIO
 from datetime import datetime
-from fpdf import FPDF 
+from fpdf import FPDF
 
 # --- 1. PAGE SETUP ---
 st.set_page_config(
@@ -138,15 +137,6 @@ def generate_clinical_pdf(patient_name, age, sex, results):
         st.error(f"PDF Generation Error: {e}")
         return None
 
-def generate_qr_code(data):
-    qr = qrcode.QRCode(version=1, box_size=10, border=4)
-    qr.add_data(data)
-    qr.make(fit=True)
-    img = qr.make_image(fill_color="black", back_color="white")
-    buffered = BytesIO()
-    img.save(buffered, format="PNG")
-    return base64.b64encode(buffered.getvalue()).decode()
-
 # --- 4. ASSET LOADING ---
 @st.cache_resource
 def load_ml_assets():
@@ -273,94 +263,59 @@ with tab1:
                 report_results["CKD"] = prob
 
             st.session_state['report_results'] = report_results
-            
-            # Integrated Fix: Storing PDF bytes in session state
             pdf_bytes = generate_clinical_pdf(p_name, age, sex, report_results)
             st.session_state['pdf_report_bytes'] = pdf_bytes
-            
             log_patient_data(p_name, age, sex, report_results)
 
     if st.session_state.get('scan_run'):
+        # --- RE-DESIGNED CLINICAL OUTPUT (QR REMOVED) ---
         st.markdown(f'<div class="section-header"><img src="data:image/png;base64,{img_rep}" width="32"/> Clinical Output</div>', unsafe_allow_html=True)
-        c1, c2 = st.columns([3, 1])
         
-        with c1:
-            st.markdown('<div class="clinical-card">', unsafe_allow_html=True)
-            report_data = st.session_state.get('pdf_report_bytes')
-            if report_data:
-                st.download_button(
-                    label="DOWNLOAD CLINICAL REPORT (PDF)",
-                    data=report_data,
-                    file_name=f"OmniCare_Report_{st.session_state['patient_name']}.pdf",
-                    mime="application/pdf",
-                    key="download_pdf_btn"
-                )
-            else:
-                st.warning("Could not generate PDF. Please check patient name for special characters.")
-            st.markdown('</div>', unsafe_allow_html=True)
-            
-        with c2:
-            st.markdown('<div class="clinical-card" style="text-align:center;">', unsafe_allow_html=True)
-            
-            # 1. Create a lightweight summary for the QR (NO heavy PDF data)
-            results = st.session_state.get('report_results', {})
-            res_summary = ", ".join([f"{k}: {v*100:.0f}%" for k, v in results.items()])
-            
-            qr_text = (
-                f"PATIENT: {st.session_state.get('patient_name')}\n"
-                f"AGE/SEX: {st.session_state.get('age')}/{st.session_state.get('sex')}\n"
-                f"DIAGNOSIS: {res_summary}\n"
-                f"DATE: {datetime.now().strftime('%Y-%m-%d')}"
+        st.markdown('<div class="clinical-card" style="text-align: center;">', unsafe_allow_html=True)
+        report_data = st.session_state.get('pdf_report_bytes')
+        
+        if report_data:
+            st.subheader(f"Final Clinical Report: {st.session_state.get('patient_name')}")
+            st.write("Diagnostic processing complete. You can now download the official clinical summary.")
+            st.download_button(
+                label="📥 DOWNLOAD CLINICAL ASSESSMENT REPORT (PDF)",
+                data=report_data,
+                file_name=f"OmniCare_Report_{st.session_state.get('patient_name', 'Patient')}.pdf",
+                mime="application/pdf",
+                key="download_pdf_btn",
+                use_container_width=True
             )
-
-            # 2. Generate a clean, low-density QR code
-            qr_b64 = generate_qr_code(qr_text)
-            st.markdown(f'<img src="data:image/png;base64,{qr_b64}" width="180">', unsafe_allow_html=True)
-            st.caption("Scan for Patient Summary")
-            st.markdown('</div>', unsafe_allow_html=True)
-
-        # 3. Dedicated Download Section in C1
-        with c1:
-            st.markdown('<div class="clinical-card">', unsafe_allow_html=True)
-            st.subheader("Final Report")
-            pdf_bytes = st.session_state.get('pdf_report_bytes')
-            
-            if pdf_bytes:
-                st.download_button(
-                    label="💾 DOWNLOAD OFFICIAL PDF REPORT",
-                    data=pdf_bytes,
-                    file_name=f"Report_{st.session_state.get('patient_name')}.pdf",
-                    mime="application/pdf",
-                    use_container_width=True
-                )
-                st.success("Report generated successfully. Click above to save.")
-            else:
-                st.error("Error: PDF bytes missing. Please re-run assessment.")
-            st.markdown('</div>', unsafe_allow_html=True)
+            st.success("Report is ready for export and archival.")
+        else:
+            st.error("Report generation failed. Please verify patient intake details.")
+        st.markdown('</div>', unsafe_allow_html=True)
         
+        # --- ASSESSMENT FINDINGS ---
         st.markdown(f'<div class="section-header"><img src="data:image/png;base64,{img_find}" width="32"/> Assessment Findings</div>', unsafe_allow_html=True)
-        cols = st.columns(len(st.session_state['selected_targets']))
-        for i, disease in enumerate(st.session_state['selected_targets']):
-            with cols[i]:
-                st.markdown('<div class="clinical-card">', unsafe_allow_html=True)
-                prob = st.session_state.get('d_res' if disease=="Diabetes" else 'h_res' if disease=="Heart Disease" else 'k_res', 0)
-                prob_pct = prob * 100
-                color = "#059669" if prob_pct <= 30 else "#d97706" if prob_pct <= 80 else "#dc2626"
-                fig = go.Figure(go.Indicator(
-                    mode="gauge+number", value=prob_pct,
-                    number={'suffix': "%", 'font': {'size': 35}},
-                    title={'text': f"{disease} Risk", 'font': {'size': 16, 'color': '#475569'}},
-                    gauge={'bar': {'color': color}, 'axis': {'range': [0, 100]}, 'bgcolor': "#f1f5f9", 'borderwidth': 0}
-                ))
-                fig.update_layout(height=260, margin=dict(l=20, r=20, t=40, b=20), paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
-                st.plotly_chart(fig, use_container_width=True)
-                st.markdown('</div>', unsafe_allow_html=True)
+        targets = st.session_state.get('selected_targets', [])
+        if targets:
+            cols = st.columns(len(targets))
+            for i, disease in enumerate(targets):
+                with cols[i]:
+                    st.markdown('<div class="clinical-card">', unsafe_allow_html=True)
+                    prob = st.session_state.get('d_res' if disease=="Diabetes" else 'h_res' if disease=="Heart Disease" else 'k_res', 0)
+                    prob_pct = prob * 100
+                    color = "#059669" if prob_pct <= 30 else "#d97706" if prob_pct <= 80 else "#dc2626"
+                    fig = go.Figure(go.Indicator(
+                        mode="gauge+number", value=prob_pct,
+                        number={'suffix': "%", 'font': {'size': 35}},
+                        title={'text': f"{disease} Risk", 'font': {'size': 16, 'color': '#475569'}},
+                        gauge={'bar': {'color': color}, 'axis': {'range': [0, 100]}, 'bgcolor': "#f1f5f9", 'borderwidth': 0}
+                    ))
+                    fig.update_layout(height=260, margin=dict(l=20, r=20, t=40, b=20), paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
+                    st.plotly_chart(fig, use_container_width=True)
+                    st.markdown('</div>', unsafe_allow_html=True)
 
 # --- 7. ANALYTICS ---
 with tab2:
     if st.session_state.get('scan_run'):
         st.markdown('<div class="clinical-card">', unsafe_allow_html=True) 
-        choice = st.selectbox("Select Diagnosis to Audit Feature Weights", st.session_state['selected_targets'])
+        choice = st.selectbox("Select Diagnosis to Audit Feature Weights", st.session_state.get('selected_targets', []))
         if choice == "CKD":
             active_model, feat_names = k_model, ['Age', 'BMI', 'Smoking', 'Alcohol', 'Activity', 'Diet', 'Sleep', 'FamilyHist', 'HTN', 'Diabetes', 'UTI', 'SysBP', 'DiaBP', 'FastingBS', 'HbA1c', 'Creatinine', 'BUN', 'GFR', 'ProteinUrine', 'Fatigue', 'LifeQuality']
         else:
