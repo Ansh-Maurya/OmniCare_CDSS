@@ -301,10 +301,23 @@ with tab1:
             
         with c2:
             st.markdown('<div class="clinical-card" style="text-align:center;">', unsafe_allow_html=True)
-            qr_content = f"Patient: {st.session_state['patient_name']}\nRisks: {list(st.session_state['report_results'].keys())}\nGenerated: {datetime.now().strftime('%H:%M')}"
-            qr_b64 = generate_qr_code(qr_content)
-            st.markdown(f'<img src="data:image/png;base64,{qr_b64}" width="150">', unsafe_allow_html=True)
-            st.caption("Scan for Mobile Sync")
+            
+            # 1. Get the PDF bytes from session state
+            pdf_data = st.session_state.get('pdf_report_bytes')
+            
+            if pdf_data:
+                # 2. Encode PDF to Base64 to create a Data URI
+                b64_pdf = base64.b64encode(pdf_data).decode('utf-8')
+                # This URI tells the phone "I am a PDF, download/open me"
+                download_url = f"data:application/pdf;base64,{b64_pdf}"
+                
+                # 3. Generate QR code with the Data URI
+                qr_b64 = generate_qr_code(download_url)
+                st.markdown(f'<img src="data:image/png;base64,{qr_b64}" width="150">', unsafe_allow_html=True)
+                st.info("Scan to download PDF directly to mobile")
+            else:
+                st.caption("Complete diagnosis to generate QR link")
+                
             st.markdown('</div>', unsafe_allow_html=True)
         
         st.markdown(f'<div class="section-header"><img src="data:image/png;base64,{img_find}" width="32"/> Assessment Findings</div>', unsafe_allow_html=True)
