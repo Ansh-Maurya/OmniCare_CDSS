@@ -11,7 +11,7 @@ from fpdf import FPDF
 
 # --- 1. PAGE SETUP ---
 st.set_page_config(
-    page_title="OmniCare CDSS | Clinical Portal", 
+    page_title="OmniCare CDSS", 
     page_icon="🛡️", 
     layout="wide",
     initial_sidebar_state="expanded"
