@@ -121,49 +121,31 @@ def log_patient_data(name, age, sex, results):
 
 # --- 3. HELPER FUNCTIONS ---
 def generate_clinical_pdf(patient_name, age, sex, results):
-    pdf = FPDF()
-    pdf.add_page()
-    
-    # ... [Keep your existing PDF styling/content code here] ...
-
-    # REPLACE your return line with this:
-    # 'dest=S' returns the PDF as a string, which we then convert to bytes
-    pdf_output = pdf.output(dest='S')
-    
-    # Use 'latin-1' but wrap it in a way that is safe for the browser
-    return BytesIO(pdf_output.encode('latin-1'))
-    
-    # Header
-    pdf.set_font("Arial", 'B', 16)
-    pdf.set_text_color(15, 23, 42)
-    pdf.cell(200, 10, "OmniCare CDSS - Clinical Assessment Report", ln=True, align='C')
-    pdf.set_font("Arial", size=10)
-    pdf.cell(200, 10, f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')}", ln=True, align='C')
-    pdf.ln(10)
-    
-    # Patient Data Section
-    pdf.set_fill_color(241, 245, 249)
-    pdf.set_font("Arial", 'B', 12)
-    pdf.cell(0, 10, " 1. Patient Profile", ln=True, fill=True)
-    pdf.set_font("Arial", size=11)
-    pdf.cell(0, 10, f" Name: {patient_name}", ln=True)
-    pdf.cell(0, 10, f" Age: {age} | Sex: {sex}", ln=True)
-    pdf.ln(5)
-    
-    # Results Section
-    pdf.set_font("Arial", 'B', 12)
-    pdf.cell(0, 10, " 2. Diagnostic Risk Analysis", ln=True, fill=True)
-    pdf.set_font("Arial", size=11)
-    for disease, prob in results.items():
-        risk_lvl = "High" if prob > 0.6 else "Moderate" if prob > 0.3 else "Low"
-        pdf.cell(0, 10, f" - {disease}: {prob*100:.1f}% Probability ({risk_lvl} Risk)", ln=True)
-    
-    pdf.ln(20)
-    pdf.set_font("Arial", 'I', 8)
-    pdf.set_text_color(148, 163, 184)
-    # BRANDING UPDATED TO OMNICARE
-    pdf.multi_cell(0, 5, "CONFIDENTIAL: This AI-generated report is intended for clinician review only. It is an educational tool provided by OmniCare CDSS and not a substitute for professional medical diagnosis.")
-    
+    try:
+        pdf = FPDF()
+        pdf.add_page()
+        
+        # Header
+        pdf.set_font("Arial", 'B', 16)
+        pdf.cell(200, 10, "OmniCare CDSS - Clinical Assessment Report", ln=True, align='C')
+        pdf.ln(10)
+        
+        # Patient Data
+        pdf.set_font("Arial", 'B', 12)
+        pdf.cell(0, 10, f" Name: {patient_name}", ln=True)
+        pdf.cell(0, 10, f" Age: {age} | Sex: {sex}", ln=True)
+        pdf.ln(5)
+        
+        # Results
+        for disease, prob in results.items():
+            risk_lvl = "High" if prob > 0.6 else "Moderate" if prob > 0.3 else "Low"
+            pdf.cell(0, 10, f" - {disease}: {prob*100:.1f}% ({risk_lvl} Risk)", ln=True)
+        
+        # Output as bytes
+        return pdf.output(dest='S').encode('latin-1')
+    except Exception as e:
+        st.error(f"PDF Generation Error: {e}")
+        return None
     return pdf.output(dest='S').encode('latin-1')
 
 def generate_qr_code(data):
@@ -317,23 +299,26 @@ with tab1:
         
         with c1:
             st.markdown('<div class="clinical-card">', unsafe_allow_html=True)
-            pdf_data = generate_clinical_pdf(
-                st.session_state['patient_name'], 
-                st.session_state['age'], 
-                st.session_state['sex'], 
-                st.session_state['report_results']
-            )
-            st.markdown(f'<img src="data:image/png;base64,{img_pdf}" width="24" style="margin-bottom:-5px;"/> **Report Ready**', unsafe_allow_html=True)
-            # Inside your 'if submit' or 'if scan_run' block:
-            pdf_buffer = generate_clinical_pdf(...)
-
-            st.download_button(
+    
+            # Generate the data
+        pdf_data = generate_clinical_pdf(
+            st.session_state['patient_name'], 
+            st.session_state['age'], 
+            st.session_state['sex'], 
+            st.session_state['report_results']
+        )
+    
+        if pdf_data:
+                st.download_button(
                 label="DOWNLOAD CLINICAL REPORT (PDF)",
-                data=pdf_buffer.getvalue(), # Get the actual bytes from the buffer
+                data=pdf_data,
                 file_name=f"OmniCare_Report_{st.session_state['patient_name']}.pdf",
                 mime="application/pdf"
             )
-            st.markdown('</div>', unsafe_allow_html=True)
+        else:
+                st.warning("Could not generate PDF. Please check patient name for special characters.")
+    
+        st.markdown('</div>', unsafe_allow_html=True)
             
         with c2:
             st.markdown('<div class="clinical-card" style="text-align:center;">', unsafe_allow_html=True)
