@@ -7,3 +7,4 @@ qrcode
 fpdf
 Pillow
 xgboost
+scikit-learn
